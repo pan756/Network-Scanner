@@ -3,4 +3,10 @@ python-nmap
 mac-vendor-lookup
 psutil
 pandas
-
+threading
+socket
+ipaddress
+subprocess
+matplotlib
+platform
+requests

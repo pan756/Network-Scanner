@@ -84,7 +84,7 @@ class ResultsTab: #tạo tab kết quả
         # Cấu hình cột
         column_widths = { #tạo chiều rộng cho cột
             'IP': 120, #chiều rộng cột IP
-            'Hostname': 150, #chiều rộng cột Hostname
+            'Hostname': 130, #chiều rộng cột Hostname
             'MAC': 130, #chiều rộng cột MAC
             'Status': 80, #chiều rộng cột Status
             'Ports': 150, #chiều rộng cột Ports
@@ -102,7 +102,7 @@ class ResultsTab: #tạo tab kết quả
         scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y) #đặt thanh cuộn dọc vào cửa sổ
         scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X) #đặt thanh cuộn ngang vào cửa sổ
         
-        # Context menu
+        # menu ngữ cảnh (chuôt phải)
         self.context_menu = tk.Menu(self.parent, tearoff=0) #tạo menu ngữ cảnh
         self.context_menu.add_command(label="📋 Copy IP", command=self.copy_ip) #đặt lệnh copy IP vào menu ngữ cảnh
         self.context_menu.add_command(label="📋 Copy Hostname", command=self.copy_hostname) #đặt lệnh copy Hostname vào menu ngữ cảnh

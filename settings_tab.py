@@ -3,7 +3,7 @@ Tab 4 - Cài đặt
 Cấu hình ứng dụng và thông tin
 """
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, colorchooser
 import json
 import os
 
@@ -36,9 +36,9 @@ class SettingsTab: #tạo tab cài đặt
     def setup_settings_tab(self, parent): #thiết lập tab cài đặt
         """Thiết lập tab cài đặt"""
         # Khung chính với cuộn
-        canvas = tk.Canvas(parent) # tạo khung chính với cuộn
+        canvas = tk.Canvas(parent, highlightthickness=0) # tạo khung chính với cuộn
         scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview) # tạo thanh cuộn
-        scrollable_frame = ttk.Frame(canvas) # tạo khung chính với cuộn
+        scrollable_frame = ttk.Frame(canvas, padding=10) # tạo khung chính với cuộn, thêm padding
         
         scrollable_frame.bind( #sự kiện cuộn
             "<Configure>", #sự kiện cuộn
@@ -48,57 +48,78 @@ class SettingsTab: #tạo tab cài đặt
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw") #tạo khung chính với cuộn
         canvas.configure(yscrollcommand=scrollbar.set) #config cho thanh cuộn
         
+        # Container để giới hạn chiều rộng và căn giữa
+        content_container = ttk.Frame(scrollable_frame)
+        content_container.pack(fill=tk.BOTH, expand=True)
+        
         # Timeout
-        timeout_frame = ttk.LabelFrame(scrollable_frame, text="Thời gian ping", padding=15) #tạo khung thời gian ping
-        timeout_frame.pack(fill=tk.X, pady=10)
+        timeout_frame = ttk.LabelFrame(content_container, text="⏱️ Thời gian ping", padding=20) #tạo khung thời gian ping
+        timeout_frame.pack(fill=tk.X, pady=(0, 15), padx=10)
+        
+        timeout_inner = ttk.Frame(timeout_frame)
+        timeout_inner.pack(fill=tk.X)
         
         self.timeout_var = tk.DoubleVar(value=self.settings.get('timeout', 1.0)) #tạo biến thời gian ping
-        timeout_scale = ttk.Scale(timeout_frame, #tạo thanh thời gian ping
+        
+        timeout_value_frame = ttk.Frame(timeout_inner)
+        timeout_value_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        timeout_label = ttk.Label(timeout_value_frame, #tạo nhãn thời gian ping
+                                 textvariable=self.timeout_var, #biến lựa chọn thời gian ping
+                                 font=('Segoe UI', 12, 'bold')) #font cho nhãn thời gian ping
+        timeout_label.pack() #đặt nhãn thời gian ping vào khung
+        
+        timeout_scale = ttk.Scale(timeout_inner, #tạo thanh thời gian ping
                                  from_=0.1, #from cho thanh thời gian ping (từ 0.1)
                                  to=5.0, #to cho thanh thời gian ping (tới 5.0)
                                  variable=self.timeout_var, #biến lựa chọn thời gian ping
                                  orient=tk.HORIZONTAL) #tạo thanh thời gian ping
-        timeout_scale.pack(fill=tk.X, pady=5) #đặt thanh thời gian ping vào khung
+        timeout_scale.pack(fill=tk.X, pady=(0, 10)) #đặt thanh thời gian ping vào khung
         
-        timeout_label = ttk.Label(timeout_frame, #tạo nhãn thời gian ping
-                                 textvariable=self.timeout_var, #biến lựa chọn thời gian ping
-                                 font=('Segoe UI', 10)) #font cho nhãn thời gian ping
-        timeout_label.pack() #đặt nhãn thời gian ping vào khung
-        
-        timeout_info = ttk.Label(timeout_frame, #tạo nhãn thông tin thời gian ping
+        timeout_info = ttk.Label(timeout_inner, #tạo nhãn thông tin thời gian ping
                                text="Thời gian chờ phản hồi (giây). Giá trị nhỏ hơn = nhanh hơn nhưng có thể bỏ sót thiết bị.",
-                               font=('Segoe UI', 10), #font cho thông tin thời gian ping
+                               font=('Segoe UI', 9), #font cho thông tin thời gian ping
                                foreground='gray', #foreground cho thông tin thời gian ping
-                               wraplength=500) #wraplength cho thông tin thời gian ping
-        timeout_info.pack(pady=5) #đặt thông tin thời gian ping vào khung
+                               wraplength=600) #wraplength cho thông tin thời gian ping
+        timeout_info.pack(anchor=tk.W) #đặt thông tin thời gian ping vào khung
         
         # Số luồng (số luồng đồng thời khi quét)
-        threads_frame = ttk.LabelFrame(scrollable_frame, text="Số luồng", padding=15) #tạo khung số luồng
-        threads_frame.pack(fill=tk.X, pady=10) #đặt khung số luồng vào khung
+        threads_frame = ttk.LabelFrame(content_container, text="🔀 Số luồng", padding=20) #tạo khung số luồng
+        threads_frame.pack(fill=tk.X, pady=(0, 15), padx=10) #đặt khung số luồng vào khung
+        
+        threads_inner = ttk.Frame(threads_frame)
+        threads_inner.pack(fill=tk.X)
         
         self.threads_var = tk.IntVar(value=self.settings.get('threads', 100)) #tạo biến số luồng
-        threads_scale = ttk.Scale(threads_frame, #tạo thanh số luồng
+        
+        threads_value_frame = ttk.Frame(threads_inner)
+        threads_value_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        threads_label = ttk.Label(threads_value_frame, #tạo nhãn số luồng
+                                 textvariable=self.threads_var, #biến lựa chọn số luồng
+                                 font=('Segoe UI', 12, 'bold')) #font cho nhãn số luồng
+        threads_label.pack() #đặt nhãn số luồng vào khung
+        
+        threads_scale = ttk.Scale(threads_inner, #tạo thanh số luồng
                                   from_=1, #from cho thanh số luồng (từ 1)
                                   to=200, #to cho thanh số luồng (tới 200)
                                   variable=self.threads_var, #biến lựa chọn số luồng
                                   orient=tk.HORIZONTAL) #tạo thanh số luồng
-        threads_scale.pack(fill=tk.X, pady=5) #đặt thanh số luồng vào khung
+        threads_scale.pack(fill=tk.X, pady=(0, 10)) #đặt thanh số luồng vào khung
         
-        threads_label = ttk.Label(threads_frame, #tạo nhãn số luồng
-                                 textvariable=self.threads_var, #biến lựa chọn số luồng
-                                 font=('Segoe UI', 10)) #font cho nhãn số luồng
-        threads_label.pack() #đặt nhãn số luồng vào khung
-        
-        threads_info = ttk.Label(threads_frame, #tạo nhãn thông tin số luồng
+        threads_info = ttk.Label(threads_inner, #tạo nhãn thông tin số luồng
                                 text="Số luồng đồng thời khi quét. Nhiều hơn = nhanh hơn nhưng tốn tài nguyên.",
-                                font=('Segoe UI', 10), #font cho thông tin số luồng
+                                font=('Segoe UI', 9), #font cho thông tin số luồng
                                 foreground='gray', #foreground cho thông tin số luồng
-                                wraplength=500) #wraplength cho thông tin số luồng
-        threads_info.pack(pady=5) #đặt thông tin số luồng vào khung
+                                wraplength=600) #wraplength cho thông tin số luồng
+        threads_info.pack(anchor=tk.W) #đặt thông tin số luồng vào khung
         
         # Nmap timing (tốc độ quét Nmap)
-        nmap_frame = ttk.LabelFrame(scrollable_frame, text="Tốc độ quét Nmap", padding=15) #tạo khung tốc độ quét Nmap
-        nmap_frame.pack(fill=tk.X, pady=10) #đặt khung tốc độ quét Nmap vào khung
+        nmap_frame = ttk.LabelFrame(content_container, text="⚡ Tốc độ quét Nmap", padding=20) #tạo khung tốc độ quét Nmap
+        nmap_frame.pack(fill=tk.X, pady=(0, 15), padx=10) #đặt khung tốc độ quét Nmap vào khung
+        
+        nmap_inner = ttk.Frame(nmap_frame)
+        nmap_inner.pack(fill=tk.X)
         
         self.nmap_timing_var = tk.IntVar(value=self.settings.get('nmap_timing', 3)) #tạo biến tốc độ quét Nmap
         
@@ -111,47 +132,164 @@ class SettingsTab: #tạo tab cài đặt
             ("T5 - Insane (Rất nhanh)", 5) #danh sách tốc độ quét Nmap
         ]
         
+        timing_container = ttk.Frame(nmap_inner)
+        timing_container.pack(fill=tk.X, pady=(0, 10))
+        
         for text, value in timing_options: #vòng lặp để tạo nút kiểm tra tốc độ quét Nmap
-            ttk.Radiobutton(nmap_frame, #tạo nút kiểm tra tốc độ quét Nmap
+            ttk.Radiobutton(timing_container, #tạo nút kiểm tra tốc độ quét Nmap
                            text=text, #text cho nút kiểm tra tốc độ quét Nmap
                            variable=self.nmap_timing_var, #biến lựa chọn tốc độ quét Nmap
-                           value=value).pack(anchor=tk.W, pady=2) #đặt nút kiểm tra tốc độ quét Nmap vào khung
+                           value=value).pack(anchor=tk.W, pady=3) #đặt nút kiểm tra tốc độ quét Nmap vào khung
         
-        nmap_info = ttk.Label(nmap_frame, #tạo nhãn thông tin tốc độ quét Nmap
+        nmap_info = ttk.Label(nmap_inner, #tạo nhãn thông tin tốc độ quét Nmap
                              text="Tốc độ quét của Nmap. T3 là mặc định, cân bằng tốt. T4-T5 nhanh hơn nhưng có thể bị phát hiện.",
-                             font=('Segoe UI', 10), #font cho thông tin tốc độ quét Nmap
+                             font=('Segoe UI', 9), #font cho thông tin tốc độ quét Nmap
                              foreground='gray', #foreground cho thông tin tốc độ quét Nmap
-                             wraplength=500) #wraplength cho thông tin tốc độ quét Nmap
-        nmap_info.pack(pady=5) #đặt thông tin tốc độ quét Nmap vào khung
+                             wraplength=600) #wraplength cho thông tin tốc độ quét Nmap
+        nmap_info.pack(anchor=tk.W) #đặt thông tin tốc độ quét Nmap vào khung
         
         # Deep scan
-        deep_frame = ttk.LabelFrame(scrollable_frame, text="Quét chi tiết", padding=15) #tạo khung quét chi tiết
-        deep_frame.pack(fill=tk.X, pady=10) #đặt khung quét chi tiết vào khung
+        deep_frame = ttk.LabelFrame(content_container, text="🔍 Quét chi tiết", padding=20) #tạo khung quét chi tiết
+        deep_frame.pack(fill=tk.X, pady=(0, 15), padx=10) #đặt khung quét chi tiết vào khung
+        
+        deep_inner = ttk.Frame(deep_frame)
+        deep_inner.pack(fill=tk.X)
         
         self.deep_scan_var = tk.BooleanVar(value=self.settings.get('deep_scan', False)) #tạo biến quét chi tiết
-        deep_check = ttk.Checkbutton(deep_frame, #tạo nút kiểm tra quét chi tiết
+        deep_check = ttk.Checkbutton(deep_inner, #tạo nút kiểm tra quét chi tiết
                                      text="Tự động phân tích sâu tất cả IP bằng python-nmap",
                                      variable=self.deep_scan_var) #tạo nút kiểm tra quét chi tiết
-        deep_check.pack(anchor=tk.W) #đặt nút kiểm tra quét chi tiết vào khung
+        deep_check.pack(anchor=tk.W, pady=(0, 10)) #đặt nút kiểm tra quét chi tiết vào khung
         
-        deep_info = ttk.Label(deep_frame, #tạo nhãn thông tin quét chi tiết
+        deep_info = ttk.Label(deep_inner, #tạo nhãn thông tin quét chi tiết
                              text="Khi bật, ứng dụng sẽ tự động quét OS và dịch vụ cho tất cả thiết bị phát hiện. Chậm hơn nhưng chi tiết hơn.",
-                             font=('Segoe UI', 10), #font cho thông tin quét chi tiết
+                             font=('Segoe UI', 9), #font cho thông tin quét chi tiết
                              foreground='gray', #foreground cho thông tin quét chi tiết
-                             wraplength=500) #wraplength cho thông tin quét chi tiết
-        deep_info.pack(pady=5) #đặt thông tin quét chi tiết vào khung
+                             wraplength=600) #wraplength cho thông tin quét chi tiết
+        deep_info.pack(anchor=tk.W) #đặt thông tin quét chi tiết vào khung
+        
+        # MAC Vendor Database
+        mac_db_frame = ttk.LabelFrame(content_container, text="📊 Cơ sở dữ liệu MAC Vendor", padding=20)
+        mac_db_frame.pack(fill=tk.X, pady=(0, 15), padx=10)
+        
+        mac_db_inner = ttk.Frame(mac_db_frame)
+        mac_db_inner.pack(fill=tk.X)
+        
+        mac_db_info = ttk.Label(mac_db_inner,
+                               text="Cơ sở dữ liệu MAC vendor được lưu cục bộ để tra cứu nhanh. Lần đầu tiên sẽ tự động tải từ IEEE.",
+                               font=('Segoe UI', 9),
+                               foreground='gray',
+                               wraplength=600)
+        mac_db_info.pack(anchor=tk.W, pady=(0, 10))
+        
+        mac_db_status_frame = ttk.Frame(mac_db_inner)
+        mac_db_status_frame.pack(fill=tk.X)
+        
+        self.mac_db_status_label = ttk.Label(mac_db_status_frame,
+                                            text="Trạng thái: Đang kiểm tra...",
+                                            font=('Segoe UI', 10))
+        self.mac_db_status_label.pack(side=tk.LEFT, padx=(0, 10))
+        
+        update_mac_db_btn = ttk.Button(mac_db_status_frame,
+                                      text="🔄 Cập nhật Database",
+                                      command=self.update_mac_database)
+        update_mac_db_btn.pack(side=tk.LEFT)
+        
+        # Kiểm tra trạng thái database
+        self.check_mac_db_status()
+        
+        # Cấu hình màu sắc Treeview
+        colors_frame = ttk.LabelFrame(content_container, text="🎨 Cấu hình màu sắc Treeview", padding=20)
+        colors_frame.pack(fill=tk.X, pady=(0, 15), padx=10)
+        
+        colors_inner = ttk.Frame(colors_frame)
+        colors_inner.pack(fill=tk.X)
+        
+        # Sử dụng grid để căn chỉnh đẹp hơn
+        color_rows = [
+            ("Background:", "background", self.settings.get('treeview_background', '#ffffff')),
+            ("Foreground:", "foreground", self.settings.get('treeview_foreground', '#000000')),
+            ("Fieldbackground:", "fieldbackground", self.settings.get('treeview_fieldbackground', '#ffffff')),
+            ("Bordercolor:", "bordercolor", self.settings.get('treeview_bordercolor', '#cccccc'))
+        ]
+        
+        self.background_var = tk.StringVar(value=self.settings.get('treeview_background', '#ffffff'))
+        self.foreground_var = tk.StringVar(value=self.settings.get('treeview_foreground', '#000000'))
+        self.fieldbackground_var = tk.StringVar(value=self.settings.get('treeview_fieldbackground', '#ffffff'))
+        self.bordercolor_var = tk.StringVar(value=self.settings.get('treeview_bordercolor', '#cccccc'))
+        
+        color_vars = {
+            'background': self.background_var,
+            'foreground': self.foreground_var,
+            'fieldbackground': self.fieldbackground_var,
+            'bordercolor': self.bordercolor_var
+        }
+        
+        for idx, (label_text, color_type, default_value) in enumerate(color_rows):
+            row_frame = ttk.Frame(colors_inner)
+            row_frame.pack(fill=tk.X, pady=8)
+            
+            ttk.Label(row_frame, text=label_text, width=18, font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(0, 10))
+            
+            entry = ttk.Entry(row_frame, textvariable=color_vars[color_type], width=25, font=('Consolas', 9))
+            entry.pack(side=tk.LEFT, padx=(0, 5))
+            
+            color_btn = tk.Button(row_frame, text="🎨", command=lambda ct=color_type: self.choose_color(ct), 
+                                 width=4, font=('Segoe UI', 10))
+            color_btn.pack(side=tk.LEFT)
+        
+        # Rowheight
+        rowheight_frame = ttk.Frame(colors_inner)
+        rowheight_frame.pack(fill=tk.X, pady=8)
+        
+        ttk.Label(rowheight_frame, text="Rowheight:", width=18, font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.rowheight_var = tk.IntVar(value=self.settings.get('treeview_rowheight', 25))
+        
+        rowheight_scale_frame = ttk.Frame(rowheight_frame)
+        rowheight_scale_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        
+        rowheight_scale = ttk.Scale(rowheight_scale_frame,
+                                    from_=15,
+                                    to=50,
+                                    variable=self.rowheight_var,
+                                    orient=tk.HORIZONTAL)
+        rowheight_scale.pack(fill=tk.X, expand=True)
+        
+        rowheight_label = ttk.Label(rowheight_frame, textvariable=self.rowheight_var, width=8, 
+                                   font=('Segoe UI', 10, 'bold'))
+        rowheight_label.pack(side=tk.LEFT)
+        
+        colors_info = ttk.Label(colors_inner,
+                               text="Cấu hình màu sắc và chiều cao hàng cho bảng kết quả Treeview.",
+                               font=('Segoe UI', 9),
+                               foreground='gray',
+                               wraplength=600)
+        colors_info.pack(anchor=tk.W, pady=(10, 0))
         
         # Buttons
-        button_frame = ttk.Frame(scrollable_frame) #tạo khung nút
-        button_frame.pack(fill=tk.X, pady=20) #đặt khung nút vào khung
+        button_frame = ttk.Frame(content_container) #tạo khung nút
+        button_frame.pack(fill=tk.X, pady=(20, 10), padx=10) #đặt khung nút vào khung
         
-        ttk.Button(button_frame, #tạo nút lưu cài đảt
+        # Container để căn giữa các nút
+        button_container = ttk.Frame(button_frame)
+        button_container.pack(expand=True)
+        
+        ttk.Button(button_container, #tạo nút lưu cài đảt
                   text="💾 Lưu cài đặt",
-                  command=self.save_settings).pack(side=tk.LEFT, padx=5) #đặt nút lưu cài đảt vào khung
+                  command=self.save_settings,
+                  width=20).pack(side=tk.LEFT, padx=8) #đặt nút lưu cài đảt vào khung
         
-        ttk.Button(button_frame, #tạo nút đặt lại mặc định
+        ttk.Button(button_container, #tạo nút đặt lại mặc định
                   text="🔄 Đặt lại mặc định",
-                  command=self.reset_settings).pack(side=tk.LEFT, padx=5) #đặt nút đặt lại mặc định vào khung
+                  command=self.reset_settings,
+                  width=20).pack(side=tk.LEFT, padx=8) #đặt nút đặt lại mặc định vào khung
+        
+        # Cập nhật canvas khi scroll
+        def on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+        canvas.bind_all("<MouseWheel>", on_mousewheel)
         
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True) #đặt khung chính với cuộn vào khung
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y) #đặt thanh cuộn vào khung
@@ -165,9 +303,9 @@ class SettingsTab: #tạo tab cài đặt
         info_text.pack(fill=tk.BOTH, expand=True) #đặt trường nhập thông tin trạng thái vào khung
         #Nội dung thông tin trong tab Tip & Giới thiệu
         content = """
-╔══════════════════════════════════════════════════════════════╗
-║            NETWORK SCANNER - HƯỚNG DẪN SỬ DỤNG               ║
-╚══════════════════════════════════════════════════════════════╝
+══════════════════════════════════════════════════════════════
+                   NETWORK SCANNER - HƯỚNG DẪN SỬ DỤNG               
+══════════════════════════════════════════════════════════════
 
 📋 MÔ TẢ
 Ứng dụng quét mạng giúp phát hiện và phân tích các thiết bị đang hoạt động 
@@ -201,6 +339,7 @@ trong mạng nội bộ (LAN).
    • Điều chỉnh số luồng
    • Cấu hình tốc độ quét Nmap
    • Bật/tắt quét chi tiết tự động
+   • Cấu hình màu sắc Treeview
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -256,13 +395,83 @@ Version: 1.0.0 - by Phạm Thành Sang
         info_text.insert(1.0, content) #insert content vào trường nhập thông tin trạng thái
         info_text.config(state=tk.DISABLED) #config cho trường nhập thông tin trạng thái
     
+    def check_mac_db_status(self):
+        """Kiểm tra trạng thái database MAC vendor"""
+        try:
+            from network_scanner import NetworkScanner
+            scanner = NetworkScanner()
+            if scanner.is_mac_database_ready():
+                self.mac_db_status_label.config(text="Trạng thái: ✅ Đã sẵn sàng", foreground='green')
+            else:
+                self.mac_db_status_label.config(text="Trạng thái: ⏳ Đang tải...", foreground='orange')
+        except:
+            self.mac_db_status_label.config(text="Trạng thái: ❌ Không khả dụng", foreground='red')
+    
+    def update_mac_database(self):
+        """Cập nhật database MAC vendor"""
+        try:
+            from network_scanner import NetworkScanner
+            from tkinter import messagebox
+            import threading
+            
+            scanner = NetworkScanner()
+            
+            def update_thread():
+                try:
+                    self.mac_db_status_label.config(text="Trạng thái: ⏳ Đang tải...", foreground='orange')
+                    success = scanner.update_mac_database_manual()
+                    if success:
+                        self.parent.after(0, lambda: self.mac_db_status_label.config(
+                            text="Trạng thái: ✅ Đã cập nhật!", foreground='green'))
+                        self.parent.after(0, lambda: messagebox.showinfo("Thành công", 
+                            "Đã cập nhật cơ sở dữ liệu MAC vendor thành công!"))
+                    else:
+                        self.parent.after(0, lambda: self.mac_db_status_label.config(
+                            text="Trạng thái: ❌ Lỗi cập nhật", foreground='red'))
+                        self.parent.after(0, lambda: messagebox.showerror("Lỗi", 
+                            "Không thể cập nhật database. Kiểm tra kết nối Internet."))
+                except Exception as e:
+                    self.parent.after(0, lambda: self.mac_db_status_label.config(
+                        text="Trạng thái: ❌ Lỗi", foreground='red'))
+                    self.parent.after(0, lambda: messagebox.showerror("Lỗi", f"Lỗi: {e}"))
+            
+            threading.Thread(target=update_thread, daemon=True).start()
+        except Exception as e:
+            from tkinter import messagebox
+            messagebox.showerror("Lỗi", f"Không thể cập nhật database: {e}")
+    
+    def choose_color(self, color_type):
+        """Chọn màu sắc"""
+        current_color = {
+            'background': self.background_var.get(),
+            'foreground': self.foreground_var.get(),
+            'fieldbackground': self.fieldbackground_var.get(),
+            'bordercolor': self.bordercolor_var.get()
+        }.get(color_type, '#ffffff')
+        
+        color = colorchooser.askcolor(title=f"Chọn màu {color_type}", initialcolor=current_color)
+        if color[1]:  # color[1] là mã hex
+            if color_type == 'background':
+                self.background_var.set(color[1])
+            elif color_type == 'foreground':
+                self.foreground_var.set(color[1])
+            elif color_type == 'fieldbackground':
+                self.fieldbackground_var.set(color[1])
+            elif color_type == 'bordercolor':
+                self.bordercolor_var.set(color[1])
+    
     def load_settings(self) -> dict: #tải cài đảt từ file
         """Tải cài đặt từ file"""
         default = { #tạo cài đảt mặc định
             'timeout': 1.0, #thời gian ping
             'threads': 100, #số luồng
             'nmap_timing': 3, #tốc độ quét Nmap
-            'deep_scan': False #quét sâu tất cả IP bằng python-nmap
+            'deep_scan': False, #quét sâu tất cả IP bằng python-nmap
+            'treeview_background': '#ffffff', #màu nền treeview
+            'treeview_foreground': '#000000', #màu chữ treeview
+            'treeview_fieldbackground': '#ffffff', #màu nền field treeview
+            'treeview_bordercolor': '#cccccc', #màu viền treeview
+            'treeview_rowheight': 25 #chiều cao hàng treeview
         }
         
         if os.path.exists(self.settings_file): #nếu file tồn tại thì tải cài đảt từ file
@@ -281,6 +490,13 @@ Version: 1.0.0 - by Phạm Thành Sang
         self.threads_var.set(self.settings.get('threads', 100)) #số luồng
         self.nmap_timing_var.set(self.settings.get('nmap_timing', 3)) #tốc độ quét Nmap
         self.deep_scan_var.set(self.settings.get('deep_scan', False)) #quét sâu tất cả IP bằng python-nmap
+        # Load color settings if vars exist
+        if hasattr(self, 'background_var'):
+            self.background_var.set(self.settings.get('treeview_background', '#ffffff'))
+            self.foreground_var.set(self.settings.get('treeview_foreground', '#000000'))
+            self.fieldbackground_var.set(self.settings.get('treeview_fieldbackground', '#ffffff'))
+            self.bordercolor_var.set(self.settings.get('treeview_bordercolor', '#cccccc'))
+            self.rowheight_var.set(self.settings.get('treeview_rowheight', 25))
     
     def save_settings(self): #lưu cài đảt
         """Lưu cài đặt"""
@@ -288,7 +504,12 @@ Version: 1.0.0 - by Phạm Thành Sang
             'timeout': self.timeout_var.get(), #thời gian ping
             'threads': self.threads_var.get(), #số luồng
             'nmap_timing': self.nmap_timing_var.get(), #tốc độ quét Nmap
-            'deep_scan': self.deep_scan_var.get() #quét sâu tất cả IP bằng python-nmap
+            'deep_scan': self.deep_scan_var.get(), #quét sâu tất cả IP bằng python-nmap
+            'treeview_background': self.background_var.get() if hasattr(self, 'background_var') else '#ffffff',
+            'treeview_foreground': self.foreground_var.get() if hasattr(self, 'foreground_var') else '#000000',
+            'treeview_fieldbackground': self.fieldbackground_var.get() if hasattr(self, 'fieldbackground_var') else '#ffffff',
+            'treeview_bordercolor': self.bordercolor_var.get() if hasattr(self, 'bordercolor_var') else '#cccccc',
+            'treeview_rowheight': self.rowheight_var.get() if hasattr(self, 'rowheight_var') else 25
         }
         
         try:
@@ -307,7 +528,12 @@ Version: 1.0.0 - by Phạm Thành Sang
             'timeout': 1.0, #thời gian ping
             'threads': 100, #số luồng
             'nmap_timing': 3, #tốc độ quét Nmap
-            'deep_scan': False #quét chi tiết   
+            'deep_scan': False, #quét chi tiết
+            'treeview_background': '#ffffff',
+            'treeview_foreground': '#000000',
+            'treeview_fieldbackground': '#ffffff',
+            'treeview_bordercolor': '#cccccc',
+            'treeview_rowheight': 25
         }
         self.load_settings_to_ui() #gọi hàm load_settings_to_ui
         self.save_settings() #gọi hàm save_settings

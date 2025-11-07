@@ -23,4 +23,5 @@ ENV/
 env/
 settings.json
 *.log
+oui.csv
 

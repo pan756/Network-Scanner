@@ -36,8 +36,8 @@ class NetworkScannerApp: #tạo ứng dụng
         self.create_header() #tạo thanh tiêu đề cho giao diện
         
         # Tạo notebook (tabs)
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        self.notebook = ttk.Notebook(self.root) #tạo notebook cho giao diện
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=5) #đặt notebook vào giao diện
         
         # Khởi tạo các tab
         self.scan_tab = None #tab quét mạng
@@ -66,14 +66,14 @@ class NetworkScannerApp: #tạo ứng dụng
                 except Exception as e: #nếu không tải được icon thì in ra lỗi
                     print(f"Không thể tải icon: {e}") #in ra lỗi nếu không tải được icon
     
-    def setup_styles(self):
+    def setup_styles(self): #cấu hình style cho giao diện
         """Thiết lập style cho giao diện"""
         style = ttk.Style() #tạo style cho giao diện
         
         # Sử dụng theme hiện đại
-        try: #nếu sử dụng được theme clam thì sử dụng theme clam
-            style.theme_use('clam') #sử dụng theme clam
-        except: #nếu không sử dụng được theme clam thì pass
+        try: #nếu sử dụng được theme vista thì sử dụng theme vista
+            style.theme_use('vista') #sử dụng theme vista (vista: hiện đại, clam: cũ, xpnative: cũ, default: cũ,...)
+        except: #nếu không sử dụng được theme vista thì pass
             pass
         
         # Cấu hình màu sắc tươi sáng
@@ -83,11 +83,11 @@ class NetworkScannerApp: #tạo ứng dụng
                        foreground='white') #màu sắc cho thanh tiêu đề
         
         style.configure('Title.TLabel', #cấu hình màu sắc cho tiêu đề
-                       font=('Segoe UI', 14, 'bold'), #font cho tiêu đề
+                       font=('Segoe UI', 15, 'bold'), #font cho tiêu đề
                        foreground='#34495e') #màu sắc cho tiêu đề
         
         style.configure('Status.TLabel', #cấu hình màu sắc cho trạng thái
-                       font=('Segoe UI', 10), #font cho trạng thái
+                       font=('Segoe UI', 11), #font cho trạng thái
                        foreground='#7f8c8d') #màu sắc cho trạng thái
         
         style.configure('Accent.TButton', #cấu hình màu sắc cho nút
@@ -95,15 +95,15 @@ class NetworkScannerApp: #tạo ứng dụng
         
         # Cấu hình Treeview
         style.configure('Treeview', #cấu hình màu sắc cho treeview
-                       font=('Segoe UI', 10), #font cho treeview
+                       font=('Segoe UI', 11), #font cho treeview
                        rowheight=25) #chiều cao của hàng
         
         style.configure('Treeview.Heading', #cấu hình màu sắc cho tiêu đề của treeview
-                       font=('Segoe UI', 10, 'bold')) #font cho tiêu đề của treeview
+                       font=('Segoe UI', 11, 'bold')) #font cho tiêu đề của treeview
     
     def create_header(self): #tạo thanh tiêu đề cho giao diện
         """Tạo header với logo và toolbar"""
-        header_frame = tk.Frame(self.root, bg='#2c3e50', height=60) #tạo khung cho thanh tiêu đề
+        header_frame = tk.Frame(self.root, bg='#2c3e50', height=60) #tạo khung cho thanh tiêu đề (màu nền: xám, màu chữ: trắng)
         header_frame.pack(fill=tk.X, padx=0, pady=0) #đặt khung cho thanh tiêu đề
         header_frame.pack_propagate(False) #không cho khung phát triển
         
@@ -113,7 +113,7 @@ class NetworkScannerApp: #tạo ứng dụng
         
         title_label = tk.Label(logo_frame, #tạo label cho logo
                               text="🔍 Network Scanner", #text cho logo
-                              font=('Segoe UI', 18, 'bold'), #font cho logo
+                              font=('Segoe UI', 24, 'bold'), #font cho logo
                               bg='#2c3e50', #màu nền cho logo
                               fg='white') #màu sắc cho logo
         title_label.pack() #đặt label cho logo
@@ -124,10 +124,10 @@ class NetworkScannerApp: #tạo ứng dụng
         
         settings_btn = tk.Button(toolbar_frame,
                                 text="⚙️ Settings", #text cho nút cài đặt
-                                bg='#3498db', #màu nền cho nút cài đặt
+                                bg='#000ff0', #màu nền cho nút cài đặt
                                 fg='white', #màu sắc cho nút cài đặt
-                                font=('Segoe UI', 10), #font cho nút cài đặt
-                                relief=tk.FLAT, #kiểu cho nút cài đặt
+                                font=('Segoe UI', 12), #font cho nút cài đặt
+                                relief=tk.SUNKEN, #kiểu cho nút cài đặt
                                 padx=10, #khoảng cách bên ngoài cho nút cài đặt
                                 pady=5, #khoảng cách bên trong cho nút cài đặt
                                 cursor='hand2', #con trỏ chuột khi di chuột vào nút cài đặt
@@ -136,10 +136,10 @@ class NetworkScannerApp: #tạo ứng dụng
         
         help_btn = tk.Button(toolbar_frame, #tạo nút trợ giúp
                             text="❓ Help", #text cho nút trợ giúp
-                            bg='#95a5a6', #màu nền cho nút trợ giúp
+                            bg='#ff000f', #màu nền cho nút trợ giúp
                             fg='white', #màu sắc cho nút trợ giúp
-                            font=('Segoe UI', 10), #font cho nút trợ giúp
-                            relief=tk.FLAT, #kiểu cho nút trợ giúp
+                            font=('Segoe UI', 12), #font cho nút trợ giúp
+                            relief=tk.SUNKEN, #kiểu cho nút trợ giúp
                             padx=10, #khoảng cách bên ngoài cho nút trợ giúp
                             pady=5, #khoảng cách bên trong cho nút trợ giúp
                             cursor='hand2', #con trỏ chuột khi di chuột vào nút trợ giúp
@@ -224,12 +224,19 @@ Tab 2 - Kết quả:
 
 Tab 3 - Phân tích:
 • Phân tích chi tiết kết quả quét
-• Xem thông tin OS, dịch vụ, cổng
+• Xem thông tin
+ + OS
+ + Dịch vụ
+ + Cổng
+ + Vendor (hãng sản xuất thiết bị)
+ + Raw XML
+ + Cảnh báo lỗ hổng (lỗ hổng cổng mở)
 
 Tab 4 - Cài đặt:
 • Cấu hình thời gian timeout
 • Điều chỉnh số luồng
 • Cấu hình tốc độ quét Nmap
+• Cấu hình màu sắc Treeview
         """
         messagebox.showinfo("Hướng dẫn", help_text) #hiển thị hướng dẫn
     

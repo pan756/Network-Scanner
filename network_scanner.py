@@ -11,6 +11,9 @@ from queue import Queue
 from datetime import datetime
 import subprocess #thêm subprocess vào để lấy thông tin về hệ thống và tiến trình (process)
 import platform #thêm platform vào để lấy hệ điều hành
+import os #thêm os vào để làm việc với file và đường dẫn
+import urllib.request #thêm urllib.request vào để tải file từ internet
+import urllib.error #thêm urllib.error vào để xử lý lỗi khi tải file
 
 try:
     from scapy.all import ARP, Ether, srp, ICMP, IP, conf #thêm scapy.all vào để lấy ARP, Ether, srp, ICMP, IP, conf
@@ -41,6 +44,119 @@ except ImportError: #nếu không nhập được psutil thì in ra lỗi
     PSUTIL_AVAILABLE = False #PSUTIL_AVAILABLE là False nếu psutil không có sẵn trong máy
     print("Cảnh báo: Thư viện psutil không khả dụng. Chức năng phát hiện interface mạng sẽ bị vô hiệu hóa.") #in ra lỗi
 
+# Đường dẫn đến file OUI database cục bộ
+OUI_DB_PATH = os.path.join(os.path.dirname(__file__), 'oui.csv') #đường dẫn đến file oui.csv trong thư mục hiện tại
+OUI_DB_URL = 'https://standards-oui.ieee.org/oui/oui.csv' #URL để tải file oui.csv từ IEEE
+
+class LocalMacLookup:
+    """Lớp tra cứu MAC vendor từ cơ sở dữ liệu cục bộ"""
+    def __init__(self, csv_path: str):
+        """Khởi tạo với đường dẫn đến file CSV cục bộ"""
+        self.csv_path = csv_path #đường dẫn đến file CSV
+        self.oui_dict = {} #từ điển lưu trữ ánh xạ OUI -> vendor
+        self.load_database() #tải cơ sở dữ liệu
+    
+    def load_database(self):
+        """Tải cơ sở dữ liệu OUI từ file CSV cục bộ"""
+        if not os.path.exists(self.csv_path): #nếu file không tồn tại thì return
+            print(f"File OUI database không tồn tại: {self.csv_path}") #in ra cảnh báo
+            return #trả về
+        
+        try:
+            import csv #import csv để đọc file CSV
+            loaded_count = 0 #đếm số lượng entries đã tải
+            with open(self.csv_path, 'r', encoding='utf-8') as f: #mở file CSV
+                reader = csv.reader(f) #tạo CSV reader
+                next(reader, None)  # Bỏ qua dòng tiêu đề nếu có
+                for row in reader: #vòng lặp qua từng dòng
+                    try:
+                        # Định dạng IEEE OUI CSV: Registry, Assignment (OUI), Organization Name
+                        # Cột 0: Registry (MA-L, MA-M, MA-S, etc.)
+                        # Cột 1: Assignment (OUI) - format: 00-1A-2B hoặc 001A2B
+                        # Cột 2: Organization Name
+                        if len(row) >= 3: #nếu dòng có ít nhất 3 cột (định dạng chuẩn IEEE)
+                            oui_prefix = row[1].strip().upper().replace('-', '').replace(':', '').replace(' ', '') #lấy OUI prefix từ cột 1 và chuẩn hóa
+                            vendor_name = row[2].strip().strip('"').strip("'") #lấy tên vendor từ cột 2, loại bỏ quotes nếu có
+                            if oui_prefix and vendor_name and len(oui_prefix) == 6: #nếu cả hai đều không rỗng và OUI có đúng 6 ký tự
+                                self.oui_dict[oui_prefix] = vendor_name #thêm vào từ điển
+                                loaded_count += 1 #tăng số lượng entries
+                        elif len(row) >= 2: #fallback: nếu chỉ có 2 cột (định dạng đơn giản)
+                            oui_prefix = row[0].strip().upper().replace('-', '').replace(':', '').replace(' ', '') #lấy OUI prefix từ cột 0 và chuẩn hóa
+                            vendor_name = row[1].strip().strip('"').strip("'") #lấy tên vendor từ cột 1, loại bỏ quotes nếu có
+                            if oui_prefix and vendor_name and len(oui_prefix) == 6: #nếu cả hai đều không rỗng và OUI có đúng 6 ký tự
+                                self.oui_dict[oui_prefix] = vendor_name #thêm vào từ điển
+                                loaded_count += 1 #tăng số lượng entries
+                    except Exception as row_error: #nếu có lỗi khi xử lý một dòng
+                        continue #bỏ qua dòng này và tiếp tục
+            print(f"Đã tải {loaded_count} entries từ cơ sở dữ liệu OUI cục bộ") #in ra số lượng entries đã tải
+        except Exception as e: #nếu có lỗi thì in ra lỗi
+            print(f"Lỗi khi tải cơ sở dữ liệu OUI từ file cục bộ: {e}") #in ra lỗi
+            import traceback #import traceback để in chi tiết lỗi
+            traceback.print_exc() #in chi tiết lỗi
+    
+    def lookup(self, mac: str) -> Optional[str]:
+        """Tra cứu vendor từ MAC address
+        
+        Args:
+            mac: Địa chỉ MAC ở bất kỳ định dạng nào (ví dụ: '00:1A:2B:3C:4D:5E', '00-1A-2B-3C-4D-5E', '001A2B3C4D5E')
+        
+        Returns:
+            Tên vendor nếu tìm thấy, None nếu không tìm thấy hoặc có lỗi
+        """
+        if not mac: #nếu MAC rỗng thì return None
+            return None #trả về None
+        
+        try:
+            # Chuẩn hóa MAC address: loại bỏ dấu phân cách và chuyển thành chữ hoa
+            mac_clean = mac.strip().replace(':', '').replace('-', '').replace('.', '').replace(' ', '').upper() #chuẩn hóa MAC
+            if len(mac_clean) < 6: #nếu MAC quá ngắn thì return None
+                return None #trả về None
+            
+            # Lấy 6 ký tự đầu (OUI prefix)
+            oui_prefix = mac_clean[:6] #lấy OUI prefix
+            
+            # Kiểm tra xem OUI prefix có hợp lệ không (chỉ chứa hex characters)
+            if not all(c in '0123456789ABCDEF' for c in oui_prefix): #nếu OUI prefix không hợp lệ
+                return None #trả về None
+            
+            return self.oui_dict.get(oui_prefix, None) #trả về vendor hoặc None
+        except Exception as e: #nếu có lỗi thì return None
+            return None #trả về None
+    
+    def reload(self):
+        """Tải lại cơ sở dữ liệu từ file"""
+        self.oui_dict.clear() #xóa từ điển cũ
+        self.load_database() #tải lại cơ sở dữ liệu
+    
+    def get_statistics(self) -> dict:
+        """Lấy thống kê về cơ sở dữ liệu OUI
+        
+        Returns:
+            Dictionary chứa thống kê: {'total_entries': int, 'database_path': str}
+        """
+        return {
+            'total_entries': len(self.oui_dict),
+            'database_path': self.csv_path
+        }
+
+def download_oui_database(force_update: bool = False) -> bool:
+    """Tải cơ sở dữ liệu OUI từ IEEE nếu chưa tồn tại cục bộ hoặc force_update=True"""
+    if os.path.exists(OUI_DB_PATH) and not force_update: #nếu file oui.csv đã tồn tại và không force update thì return True
+        return True #trả về True
+    
+    try:
+        print(f"Đang tải cơ sở dữ liệu OUI từ IEEE...") #in ra thông báo đang tải
+        urllib.request.urlretrieve(OUI_DB_URL, OUI_DB_PATH) #tải file oui.csv từ IEEE và lưu vào đường dẫn cục bộ
+        print(f"Đã tải xong cơ sở dữ liệu OUI: {OUI_DB_PATH}") #in ra thông báo đã tải xong
+        return True #trả về True
+    except urllib.error.URLError as e: #nếu có lỗi khi tải file thì in ra lỗi
+        print(f"Lỗi khi tải cơ sở dữ liệu OUI: {e}") #in ra lỗi
+        print("Sẽ thử tải lại khi có kết nối Internet.") #in ra thông báo sẽ thử lại
+        return False #trả về False
+    except Exception as e: #nếu có lỗi khác thì in ra lỗi
+        print(f"Lỗi không mong đợi khi tải cơ sở dữ liệu OUI: {e}") #in ra lỗi
+        return False #trả về False
+
 class NetworkScanner: #tạo lớp NetworkScanner
     def __init__(self, timeout: float = 1.0, threads: int = 100): #khởi tạo lớp NetworkScanner với timeout (mặc định là 1.0 giây) và số luồng (mặc định là 100 luồng)
         self.timeout = timeout #thời gian timeout
@@ -50,11 +166,32 @@ class NetworkScanner: #tạo lớp NetworkScanner
         self.lock = threading.Lock() #khởi tạo lock
         self.mac_lookup = None #khởi tạo biến mac_lookup
         
-        if MAC_LOOKUP_AVAILABLE: #nếu MAC_LOOKUP_AVAILABLE là True thì khởi tạo mac_lookup
-            try:
-                self.mac_lookup = MacLookup() #khởi tạo mac_lookup
-            except:
-                pass #nếu có lỗi thì pass
+        # Khởi tạo MAC lookup với cơ sở dữ liệu cục bộ
+        try:
+            # Tải cơ sở dữ liệu OUI nếu chưa có
+            download_oui_database() #tải cơ sở dữ liệu OUI nếu chưa có
+            
+            # Sử dụng lớp LocalMacLookup để tra cứu từ file cục bộ
+            if os.path.exists(OUI_DB_PATH): #nếu file oui.csv tồn tại thì khởi tạo LocalMacLookup
+                self.mac_lookup = LocalMacLookup(OUI_DB_PATH) #khởi tạo LocalMacLookup với file cục bộ
+                print(f"Đã tải cơ sở dữ liệu OUI cục bộ: {len(self.mac_lookup.oui_dict)} entries") #in ra số lượng entries
+            else: #nếu file không tồn tại thì thử dùng MacLookup mặc định
+                if MAC_LOOKUP_AVAILABLE: #nếu MAC_LOOKUP_AVAILABLE là True thì khởi tạo MacLookup mặc định
+                    try:
+                        self.mac_lookup = MacLookup() #khởi tạo MacLookup mặc định
+                        print("Sử dụng MacLookup mặc định (cần Internet)") #in ra thông báo
+                    except:
+                        pass #nếu có lỗi thì pass
+        except Exception as e: #nếu có lỗi thì in ra lỗi
+            print(f"Lỗi khi khởi tạo MAC lookup: {e}") #in ra lỗi
+            # Fallback: thử dùng MacLookup mặc định nếu có
+            if MAC_LOOKUP_AVAILABLE: #nếu MAC_LOOKUP_AVAILABLE là True thì thử khởi tạo MacLookup mặc định
+                try:
+                    self.mac_lookup = MacLookup() #khởi tạo MacLookup mặc định
+                except:
+                    self.mac_lookup = None #đặt mac_lookup là None
+            else: #nếu MAC_LOOKUP_AVAILABLE là False thì đặt mac_lookup là None
+                self.mac_lookup = None #đặt mac_lookup là None
         
         # Disable verbose output for Scapy
         if SCAPY_AVAILABLE: #nếu SCAPY_AVAILABLE là True thì khởi tạo conf.verb
@@ -248,12 +385,12 @@ class NetworkScanner: #tạo lớp NetworkScanner
             scan_args = '' #khởi tạo biến scan_args
             
             if scan_service: #nếu scan_service là True thì thêm -sV vào biến scan_args
-                scan_args += '-sV' #thêm -sV vào biến scan_args
+                scan_args += '-sV' #thêm -sV vào biến scan_args (scan_service: quét dịch vụ)
             if scan_os: #nếu scan_os là True thì thêm -O vào biến scan_args
-                scan_args += ' -O' #thêm -O vào biến scan_args
+                scan_args += ' -O' #thêm -O vào biến scan_args (scan_os: quét hệ điều hành)
             
             if ports: #nếu ports không phải là None thì thêm -p vào biến scan_args
-                scan_args += f' -p {ports}' #thêm -p vào biến scan_args
+                scan_args += f' -p {ports}' #thêm -p vào biến scan_args (ports: cổng)
             
             nm.scan(ip, arguments=scan_args, timeout=self.timeout * 1000) #quét IP với scan_args và timeout
             
@@ -378,4 +515,32 @@ class NetworkScanner: #tạo lớp NetworkScanner
     def stop_scan(self): #dừng quét
         """Dừng quét"""
         self.scanning = False #trạng thái quét là False
+    
+    def is_mac_database_ready(self) -> bool:
+        """Kiểm tra xem cơ sở dữ liệu MAC vendor đã sẵn sàng chưa"""
+        if isinstance(self.mac_lookup, LocalMacLookup): #nếu mac_lookup là LocalMacLookup
+            return len(self.mac_lookup.oui_dict) > 0 #trả về True nếu có dữ liệu
+        elif self.mac_lookup is not None: #nếu mac_lookup không phải None
+            return True #trả về True
+        return False #trả về False
+    
+    def update_mac_database_manual(self) -> bool:
+        """Cập nhật cơ sở dữ liệu MAC vendor từ IEEE (force update)"""
+        try:
+            # Tải lại file từ IEEE
+            if download_oui_database(force_update=True): #tải lại file với force_update=True
+                # Nếu đang sử dụng LocalMacLookup, reload lại
+                if isinstance(self.mac_lookup, LocalMacLookup): #nếu mac_lookup là LocalMacLookup
+                    self.mac_lookup.reload() #tải lại cơ sở dữ liệu
+                    print(f"Đã cập nhật cơ sở dữ liệu OUI: {len(self.mac_lookup.oui_dict)} entries") #in ra số lượng entries
+                else: #nếu không phải LocalMacLookup thì khởi tạo lại
+                    # Khởi tạo lại với LocalMacLookup
+                    if os.path.exists(OUI_DB_PATH): #nếu file tồn tại
+                        self.mac_lookup = LocalMacLookup(OUI_DB_PATH) #khởi tạo LocalMacLookup
+                        print(f"Đã tải cơ sở dữ liệu OUI cục bộ: {len(self.mac_lookup.oui_dict)} entries") #in ra số lượng entries
+                return True #trả về True
+            return False #trả về False
+        except Exception as e: #nếu có lỗi thì in ra lỗi
+            print(f"Lỗi khi cập nhật cơ sở dữ liệu MAC vendor: {e}") #in ra lỗi
+            return False #trả về False
 
